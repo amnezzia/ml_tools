@@ -58,7 +58,7 @@ class MyNet(object):
         self._test_loss_setup()
 
         # compile
-        self._method = kwargs.get('method', None)
+        self._method = kwargs.pop('method', None)
         if kwargs.get('compile', False) and self._method is not None:
             self.compile_functions(method=self._method, **kwargs)
 
@@ -147,7 +147,7 @@ class MyNet(object):
 
         updates = getattr(lasagne.updates, self._method, 'sgd')(self._loss_symb, params_symb, self._learning_rate_symb, **kwargs)
         print("Using {} method with prams:".format(self._method,))
-        for k, v in kwargs:
+        for k, v in kwargs.items():
             print('\t', k, '=', v)
 
 
