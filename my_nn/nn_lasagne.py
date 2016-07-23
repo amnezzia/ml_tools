@@ -60,7 +60,7 @@ class MyNet(object):
         # compile
         self._method = kwargs.get('method', None)
         if kwargs.get('compile', False) and self._method is not None:
-            self.compile_functions(method=self._method)
+            self.compile_functions(method=self._method, **kwargs)
 
         # for recording training progress
         self.train_losses = []
