@@ -61,8 +61,9 @@ class MyXGBClassifier(object):
         y_max = -1e111
         for k, v in self.evals_result.items():
             for m, res in v.items():
+                res = np.array(res).astype(float)
                 _curves["{}, {}".format(k, m)] = res
-                y_min = min(y_min, min(res))
+                y_min = min(y_min, res.min())
                 y_max = max(y_max, np.percentile(res, 80))
 
         for lab, res in _curves.items():
