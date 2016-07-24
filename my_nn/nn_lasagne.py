@@ -10,10 +10,11 @@ import numpy as np
 import time
 import sys
 import os
-import collections as cl
+import scipy.sparse as sp
 import lasagne
 
 from sklearn.cross_validation import StratifiedShuffleSplit
+from sklearn.preprocessing import LabelBinarizer
 
 #os.environ['OMP_NUM_THREADS']='4'
 #theano.config.openmp = True
@@ -270,6 +271,9 @@ class MyNet(object):
         # deal with learning rate schedule
         lr_schedule = self._get_learning_rate_schedule(learning_rate)
 
+        self.sparse_X = False
+        if isinstance(X, sp.spmatrix):
+            self.sparse_X = True
 
         ######################## training #######################
         # start training
@@ -281,18 +285,26 @@ class MyNet(object):
             train_batches = 0
             train_batch_loss = 0
             for start_ix, end_ix in self._iterate_minibatches(X_tr.shape[0], batch_size):
+                # print(X_tr[start_ix: end_ix].shape)
+                # print(Y_tr[start_ix: end_ix].shape)
+                # print(lr_schedule[self.epoch])
+
+                X_batch = X_tr[start_ix: end_ix]
+                Y_batch = Y_tr[start_ix: end_ix]
+                if self.sparse_X:
+                    X_batch = X_batch.toarray()
 
                 if record_batches:
-                    self.train_losses_batch.append(self._train_func(X_tr[start_ix: end_ix],
-                                                                    Y_tr[start_ix: end_ix],
+                    self.train_losses_batch.append(self._train_func(X_batch,
+                                                                    Y_batch,
                                                                     lr_schedule[self.epoch],
                                                                     #class_weights[start_ix: end_ix]
                                                                     ))
                     train_batch_loss += self.train_losses_batch[-1]
 
                 else:
-                    train_batch_loss += self._train_func(X_tr[start_ix: end_ix],
-                                                         Y_tr[start_ix: end_ix],
+                    train_batch_loss += self._train_func(X_batch,
+                                                         Y_batch,
                                                          lr_schedule[self.epoch],
                                                          #class_weights[start_ix: end_ix]
                                                          )
@@ -306,16 +318,20 @@ class MyNet(object):
             if use_CV:
                 cv_batches = 0
                 cv_batch_loss = 0
+
                 for start_ix, end_ix in self._iterate_minibatches(X_te.shape[0], batch_size):
 
+                    X_batch = X_te[start_ix: end_ix]
+                    Y_batch = Y_te[start_ix: end_ix]
+                    if self.sparse_X:
+                        X_batch = X_batch.toarray()
+
                     if record_batches:
-                        self.cv_losses_batch.append(self._cv_func(X_te[start_ix: end_ix],
-                                                                  Y_te[start_ix: end_ix]))
+                        self.cv_losses_batch.append(self._cv_func(X_batch, Y_batch))
                         cv_batch_loss += self.cv_losses_batch[-1]
 
                     else:
-                        cv_batch_loss += self._cv_func(X_te[start_ix: end_ix],
-                                                       Y_te[start_ix: end_ix])
+                        cv_batch_loss += self._cv_func(X_batch, Y_batch)
 
                     cv_batches += 1
 
@@ -395,8 +411,12 @@ class MyNet(object):
 
     def predict_proba(self, X, batch_size=512):
         res = np.zeros((X.shape[0], self.output_size))
-        for start_ix, end_ix in self._iterate_minibatches(X.shape[0], batch_size):
-            res[start_ix: end_ix, :] = self._predict_proba_func(X[start_ix: end_ix])
+        if isinstance(X, sp.spmatrix):
+            for start_ix, end_ix in self._iterate_minibatches(X.shape[0], batch_size):
+                res[start_ix: end_ix, :] = self._predict_proba_func(X[start_ix: end_ix].toarray())
+        else:
+            for start_ix, end_ix in self._iterate_minibatches(X.shape[0], batch_size):
+                res[start_ix: end_ix, :] = self._predict_proba_func(X[start_ix: end_ix])
 
         return res
 
@@ -444,3 +464,50 @@ class MyAE(MyNet):
             outputs=enc_symb,
             allow_input_downcast=True,
         )
+
+
+class MyNetClassifier(object):
+
+    def __init__(self, net_setup, loss_setup, fit_params, compile_params, NNModel=None):
+
+        self.NNModel = NNModel
+        if NNModel is None:
+            self.NNModel = MyNet
+
+        self.net_setup = net_setup.copy()
+        self.loss_setup = loss_setup.copy()
+        self.fit_params = fit_params.copy()
+        self.compile_params = compile_params.copy()
+
+        self.fit_params['patience'] = self.fit_params.get('patience',
+                                                          self.fit_params.get('early_stopping_rounds', 10))
+
+        self.lb = LabelBinarizer()
+        self.use_lb = False
+
+    def fit(self, X, y, CV=None):
+
+        y_b = y
+        if y.ndim == 1:
+            y_b = self.lb.fit_transform(y)
+            self.use_lb = True
+
+        self.net_setup['input_size'] = X.shape[1]
+        self.net_setup['output_size'] = y_b.shape[1]
+        print(self.net_setup)
+
+        if CV is not None and isinstance(CV, (list, tuple, np.ndarray)) and len(CV) ==2:
+            if self.use_lb:
+                CV[1] = self.lb.transform(CV[1])
+            self.fit_params['CV_data'] = CV
+
+        self.nnet = self.NNModel(self.net_setup, self.loss_setup)
+        self.nnet.compile_functions(**self.compile_params)
+        self.nnet.fit(X, y_b, **self.fit_params)
+
+
+    def predict(self, X):
+        return self.nnet.predict(X)
+
+    def predict_proba(self, X):
+        return self.predict(X)
