@@ -377,7 +377,6 @@ class MyNet(object):
         tr_min, tr_max = tr_y.min(), np.percentile(tr_y, 70)
         cv_min, cv_max = cv_y.min(), np.percentile(cv_y, 80)
 
-
         plt.loglog(x, tr_y, label='train')
         plt.loglog(x, cv_y, label='CV - {:.5f} at {}'.format(cv_min, np.argmin(self.cv_losses)))
 
