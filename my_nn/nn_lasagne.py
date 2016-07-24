@@ -16,6 +16,8 @@ import lasagne
 from sklearn.cross_validation import StratifiedShuffleSplit
 from sklearn.preprocessing import LabelBinarizer
 
+import matplotlib.pyplot as plt
+
 #os.environ['OMP_NUM_THREADS']='4'
 #theano.config.openmp = True
 #theano.config.cxx = 'g++-5'
@@ -230,7 +232,8 @@ class MyNet(object):
             progress_every=10,
             train_loss_stop=False,
             stop_file='',
-            restart=False):
+            restart=False,
+            plot_curves=False):
 
         if restart:
             self.epoch = 0
@@ -360,6 +363,36 @@ class MyNet(object):
             # finally increment epoch number
             self.epoch += 1
 
+        if plot_curves:
+            self._plot_curves()
+
+
+    def _plot_curves(self):
+
+        fig = plt.figure(figsize=(5, 5))
+        x = np.arange(len(self.train_losses))
+        tr_y = np.array(self.train_losses)
+        cv_y = np.array(self.cv_losses)
+
+        tr_min, tr_max = tr_y.min(), np.percentile(tr_y, 70)
+        cv_min, cv_max = cv_y.min(), np.percentile(cv_y, 80)
+
+
+        plt.loglog(x, tr_y, label='train')
+        plt.loglog(x, cv_y, label='CV - {:.5f} at {}'.format(cv_min, np.argmin(self.cv_losses)))
+
+        y_min = 0.99 * min(tr_min, cv_min)
+        y_max = 1.01 * max(tr_max, cv_max)
+
+        fig.axes[0].set_ylim(y_min, y_max)
+        fig.axes[0].set_xlim(1, 50 + self.epoch)
+        fig.axes[0].yaxis.set_ticks(np.linspace(y_min, y_max, 11))
+        fig.axes[0].yaxis.set_ticklabels(np.linspace(y_min, y_max, 11))
+
+        plt.legend(loc=0)
+        #plt.title(plot_title)
+
+
 
     def _get_stop_conditions(self, patience, use_CV, stop_file, train_loss_stop):
 
@@ -399,7 +432,7 @@ class MyNet(object):
 
     def _print_progress(self, progress_every, use_CV, use_score, t0):
 
-        if self.epoch % progress_every == 0:
+        if (self.epoch + 1) % progress_every == 0:
             print("done epoch {}, time from start: {:.3f}".format(self.epoch, time.time() - t0))
             print("\tCurrent train loss: {}".format(self.train_losses[-1]))
             if use_CV: print("\tCurrent CV loss: {}".format(self.cv_losses[-1]))
