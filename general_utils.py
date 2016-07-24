@@ -28,7 +28,8 @@ shape: {}
 def log_output(fname, _options, output_shape=''):
 
     if not os.path.exists(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', ''))):
-        os.mkdir(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')))
+        #os.chdir(_options.get('root_dir', ''))
+        os.makedirs(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')), exist_ok=True)
 
     with open(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', ''), FILE_CREATION_LOG_FILE_NAME), 'a') as f:
         f.write(FILE_CREATION_LOG_TEMPLATE.format(time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -40,7 +41,7 @@ def log_output(fname, _options, output_shape=''):
 def log_script_run(_options):
 
     if not os.path.exists(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', ''))):
-        os.mkdir(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')))
+        os.makedirs(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')), exist_ok=True)
 
     with open(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', ''), SCRIPT_RUN_LOG_FILE_NAME), 'a') as f:
         f.write('\n\n')
@@ -51,7 +52,7 @@ def log_script_run(_options):
 
 def save_df(df, fname, _options, archive=False):
     if not os.path.exists(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', ''))):
-        os.mkdir(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')))
+        os.makedirs(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')), exist_ok=True)
 
     fpath = os.path.join(_options['root_dir'], _options['output_dir'], fname)
     _options['output_files'].append(fpath)
@@ -80,7 +81,7 @@ def save_model(model, fname, _options):
     :return:
     '''
     if not os.path.exists(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', ''))):
-        os.mkdir(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')))
+        os.makedirs(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')), exist_ok=True)
 
     fpath = os.path.join(_options['root_dir'], _options['output_dir'], fname)
     _options['output_files'].append(fpath)
@@ -101,7 +102,7 @@ def save_corpus(corp, fname, _options):
     :return:
     '''
     if not os.path.exists(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', ''))):
-        os.mkdir(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')))
+        os.makedirs(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')), exist_ok=True)
 
     fpath = os.path.join(_options['root_dir'], _options['output_dir'], fname)
     _options['output_files'].append(fpath)
@@ -122,7 +123,7 @@ def save_object(obj, fname, _options):
     :return:
     '''
     if not os.path.exists(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', ''))):
-        os.mkdir(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')))
+        os.makedirs(os.path.join(_options.get('root_dir', ''), _options.get('output_dir', '')), exist_ok=True)
 
     fpath = os.path.join(_options['root_dir'], _options['output_dir'], fname)
     _options['output_files'].append(fpath)
