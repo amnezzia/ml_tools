@@ -10,6 +10,7 @@ import numpy as np
 import time
 import sys
 import os
+from collections import OrderedDict
 import scipy.sparse as sp
 import lasagne
 
@@ -43,6 +44,8 @@ class MyNet(object):
         self._Y_symb = T.matrix("Y_bin")
         #self.class_weights_symb = T.vector('class_weights')
         self._learning_rate_symb = T.scalar("learning rate")
+
+        self.updates = OrderedDict()
 
         # set up net architecture
         self.net_setup = net_setup
@@ -147,9 +150,12 @@ class MyNet(object):
 
         # get all params vars
         params_symb = lasagne.layers.get_all_params(self.out_layer)
-
-        updates = getattr(lasagne.updates, self._method, 'sgd')(self._loss_symb, params_symb, self._learning_rate_symb, **kwargs)
+        self.updates.update(
+            getattr(lasagne.updates, self._method, 'sgd')(self._loss_symb, params_symb, self._learning_rate_symb, **kwargs)
+        )
+        #print(list(self.updates.keys())[0])
         print("Using {} method with prams:".format(self._method,))
+
         for k, v in kwargs.items():
             print('\t', k, '=', v)
 
@@ -162,7 +168,7 @@ class MyNet(object):
                 #self.class_weights_symb
             ],
             outputs=self._loss_symb,
-            updates=updates,
+            updates=self.updates,
             allow_input_downcast=True,
         )
 
@@ -278,6 +284,10 @@ class MyNet(object):
         if isinstance(X, sp.spmatrix):
             self.sparse_X = True
 
+        self.sparse_Y = False
+        if isinstance(Y, sp.spmatrix):
+            self.sparse_Y = True
+
         ######################## training #######################
         # start training
         t0 = time.time()
@@ -296,6 +306,8 @@ class MyNet(object):
                 Y_batch = Y_tr[start_ix: end_ix]
                 if self.sparse_X:
                     X_batch = X_batch.toarray()
+                if self.sparse_Y:
+                    Y_batch = Y_batch.toarray()
 
                 if record_batches:
                     self.train_losses_batch.append(self._train_func(X_batch,
@@ -328,6 +340,8 @@ class MyNet(object):
                     Y_batch = Y_te[start_ix: end_ix]
                     if self.sparse_X:
                         X_batch = X_batch.toarray()
+                    if self.sparse_Y:
+                        Y_batch = Y_batch.toarray()
 
                     if record_batches:
                         self.cv_losses_batch.append(self._cv_func(X_batch, Y_batch))
@@ -444,6 +458,7 @@ class MyNet(object):
     def predict_proba(self, X, batch_size=512):
         res = np.zeros((X.shape[0], self.output_size))
         if isinstance(X, sp.spmatrix):
+            #print('sparse!')
             for start_ix, end_ix in self._iterate_minibatches(X.shape[0], batch_size):
                 res[start_ix: end_ix, :] = self._predict_proba_func(X[start_ix: end_ix].toarray())
         else:
@@ -491,11 +506,24 @@ class MyAE(MyNet):
 
         enc_symb = lasagne.layers.get_output(self.enc_layer, deterministic=True)
 
-        self.encode = theano.function(
+        self._encode = theano.function(
             inputs=[self._X_symb,],
             outputs=enc_symb,
             allow_input_downcast=True,
         )
+
+    def encode(self, X, batch_size=512):
+        res = np.zeros((X.shape[0], self.net_setup['output_size']))
+        if isinstance(X, sp.spmatrix):
+            #print('sparse!')
+            for start_ix, end_ix in self._iterate_minibatches(X.shape[0], batch_size):
+                res[start_ix: end_ix, :] = self._encode(X[start_ix: end_ix].toarray())
+        else:
+            for start_ix, end_ix in self._iterate_minibatches(X.shape[0], batch_size):
+                res[start_ix: end_ix, :] = self._encode(X[start_ix: end_ix])
+
+        return res
+
 
 
 class MyNetClassifier(object):
@@ -504,6 +532,7 @@ class MyNetClassifier(object):
 
         self.NNModel = NNModel
         if NNModel is None:
+            print('use_default net architecture')
             self.NNModel = MyNet
 
         self.net_setup = net_setup.copy()
