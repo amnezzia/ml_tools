@@ -546,12 +546,15 @@ class MyNetClassifier(object):
         self.lb = LabelBinarizer()
         self.use_lb = False
 
-    def fit(self, X, y, CV=None):
+    def fit(self, X, y, CV=None, no_binarizer=False):
 
         y_b = y
         if y.ndim == 1:
-            y_b = self.lb.fit_transform(y)
-            self.use_lb = True
+            if no_binarizer:
+                y_b = y_b[:, None]
+            else:
+                y_b = self.lb.fit_transform(y)
+                self.use_lb = True
 
         self.net_setup['input_size'] = X.shape[1]
         self.net_setup['output_size'] = y_b.shape[1]
@@ -572,3 +575,5 @@ class MyNetClassifier(object):
 
     def predict_proba(self, X):
         return self.predict(X)
+
+
