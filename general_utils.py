@@ -152,7 +152,7 @@ def load_object(fpath):
     return obj
 
 
-def get_batches(some_list, n_batches):
+def get_batches(some_list, n_batches=None, batch_size=None, return_copy=False):
     '''
     slice some array-like object into n_batches, this is mainly for multiprocessing
     :param some_list:
@@ -160,7 +160,20 @@ def get_batches(some_list, n_batches):
     :return:
     '''
     l = len(some_list)
-    bs = int(l / n_batches) + 1
-    for i in range(n_batches):
-        yield some_list[i * bs : (i + 1) * bs]
+    
+    if batch_size is not None:
+        bs = int(batch_size)
+        n_batches = int(l / bs) + 1
+    elif n_batches is not None:
+        bs = int(l / n_batches) + 1
+    else:
+        print("Specify batch size or number of batches")
+        return None
+    
+    if return_copy:
+        for i in range(n_batches):
+            yield some_list[i * bs : (i + 1) * bs].copy()
+    else:
+        for i in range(n_batches):
+            yield some_list[i * bs : (i + 1) * bs]
 

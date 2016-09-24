@@ -40,7 +40,10 @@ class MyNet(object):
         '''
 
         # some symbolic variables
-        self._X_symb = T.matrix("X")
+        #if 'seq_size' in net_setup.keys():
+        #	self._X_symb = T.matrix("X")
+        #else:
+        #	self._X_symb = T.matrix("X")
         self._Y_symb = T.matrix("Y_bin")
         #self.class_weights_symb = T.vector('class_weights')
         self._learning_rate_symb = T.scalar("learning rate")
@@ -96,7 +99,8 @@ class MyNet(object):
         subclass and override this for other architectures
         :return:
         '''
-        l_in = lasagne.layers.InputLayer((None, self.net_setup['input_size']), self._X_symb)
+        l_in = lasagne.layers.InputLayer((None, self.net_setup['input_size']))
+        self._X_symb = l_in.input_var
         l_h = lasagne.layers.DenseLayer(l_in, self.net_setup['hidden_size'], nonlinearity=lasagne.nonlinearities.sigmoid)
         l_o = lasagne.layers.DenseLayer(l_h, self.net_setup['output_size'], nonlinearity=lasagne.nonlinearities.sigmoid)
 
@@ -298,12 +302,11 @@ class MyNet(object):
             train_batches = 0
             train_batch_loss = 0
             for start_ix, end_ix in self._iterate_minibatches(X_tr.shape[0], batch_size):
-                # print(X_tr[start_ix: end_ix].shape)
-                # print(Y_tr[start_ix: end_ix].shape)
-                # print(lr_schedule[self.epoch])
 
                 X_batch = X_tr[start_ix: end_ix]
+                #print(X_batch.shape)
                 Y_batch = Y_tr[start_ix: end_ix]
+                #print(Y_batch.shape)
                 if self.sparse_X:
                     X_batch = X_batch.toarray()
                 if self.sparse_Y:
@@ -556,7 +559,7 @@ class MyNetClassifier(object):
                 y_b = self.lb.fit_transform(y)
                 self.use_lb = True
 
-        self.net_setup['input_size'] = X.shape[1]
+        self.net_setup['input_size'] = X.shape[-1]
         self.net_setup['output_size'] = y_b.shape[1]
         print(self.net_setup)
 
